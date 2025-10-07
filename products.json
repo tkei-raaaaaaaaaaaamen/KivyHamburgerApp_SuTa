@@ -1,0 +1,18 @@
+{
+  "mains": [
+    {"id":"m1","name":"クラシックビーフ","price":600,"image":"classicbeef.png"},
+    {"id":"m2","name":"スパイシーチキン","price":650,"image":"spicychicken.png"},
+    {"id":"m3","name":"ベジタリアン","price":580,"image":"vegetarian.png"},
+    {"id":"m4","name":"ホットドッグ","price":350,"image":"hotdog.png"},
+    {"id":"m5","name":"バーベーキュー","price":580,"image":"barbecue.png"},
+    {"id":"m6","name":"チーズバーガー","price":580,"image":"cheeseBurger.png"}
+  ],
+  "sides": [
+    {"id":"s1","name":"ナゲット","price":300,"image":"nugget.png"},
+    {"id":"s2","name":"ポテト","price":220,"image":"poteto.png"}
+  ],
+  "drinks": [
+    {"id":"d1","name":"コーヒー","price":180,"image":"coffee.png"},
+    {"id":"d2","name":"ミラクルジュース","price":180,"image":"juice.png"}
+  ]
+}

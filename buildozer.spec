@@ -49,7 +49,7 @@ requirements = python3,kivy
 # requirements.source.kivy = ../../kivy
 
 # (str) Presplash of the application
-#presplash.filename = %(source.dir)s/data/presplash.png
+presplash.filename = %(source.dir)s/assets/images/loading.gif
 
 # (str) Icon of the application
 icon.filename = %(source.dir)s/takakei.png
@@ -89,7 +89,7 @@ fullscreen = 0
 # red, blue, green, black, white, gray, cyan, magenta, yellow, lightgray,
 # darkgray, grey, lightgrey, darkgrey, aqua, fuchsia, lime, maroon, navy,
 # olive, purple, silver, teal.
-#android.presplash_color = #FFFFFF
+android.presplash_color = #FFFFFF
 
 # (string) Presplash animation using Lottie format.
 # see https://lottiefiles.com/ for examples and https://airbnb.design/lottie/
@@ -448,7 +448,7 @@ warn_on_root = 1
 #
 #   Buildozer supports lists - i.e.
 #       [app]
-#       source.include_exts = py,png,jpg
+#       source.include_exts = py,png,jpg,gif
 #       #                     ^ This is a list.
 #
 #       [app:source.include_exts]

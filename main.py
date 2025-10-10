@@ -7,14 +7,13 @@ from kivy.core.text import LabelBase, DEFAULT_FONT
 from kivy.resources import resource_add_path
 import os
 import json
-from kivy.uix.togglebutton import ToggleButton
-from kivy.uix.checkbox import CheckBox
-from kivy.uix.spinner import Spinner
 from kivy.uix.button import Button
 from kivy.uix.popup import Popup
 from kivy.metrics import dp, sp
-from kivy.utils import platform
 from kivy.core.window import Window
+from kivy.uix.behaviors import ButtonBehavior
+from kivy.graphics import Color, RoundedRectangle
+from kivy.uix.floatlayout import FloatLayout
 
 # フォントファイルの指定
 font_path = os.path.join(os.path.dirname(__file__), "font", "NotoSansJP-VariableFont_wght.ttf")
@@ -35,181 +34,247 @@ class ListViewApp(App):
         base = os.path.dirname(__file__)
         products_path = os.path.join(base, 'products.json')
 
-        # UI 基本値（dp/sp で指定）
-        ui_padding = dp(10)
-        row_height = dp(64)
-        chk_size = dp(40)
-        img_size = dp(56)
-        spinner_width = dp(96)
-        spinner_compact_width = dp(64)
-        spinner_height = dp(34)
-        label_large = sp(16)
-        label_small = sp(14)
-        order_btn_height = dp(44)
-        label_color = (0, 0, 0, 1)
+        # UI基本値の更新
+        ui_padding = dp(12)  # パディングを少し大きく
+        row_height = dp(120)  # 行の高さを増やして余裕を持たせる
+        card_radius = dp(8)  # カードの角丸の半径
+        img_size = dp(80)  # 画像サイズを大きく
+        label_color = (0.3, 0.3, 0.3, 1)  # ラベルの色を濃いグレーに
 
-        # 背景色を明るく設定（デフォルトの黒っぽさを改善）
-        try:
-            Window.clearcolor = (0.65, 0.65, 0.65, 1)
-        except Exception:
-            pass
+        # 背景色をより明るく設定
+        Window.clearcolor = (0.95, 0.95, 0.95, 1)
 
-        # json読み込んでしまおう（存在しない場合は分かりやすく表示してクラッシュ回避）
+        # 商品カードのベースクラス
+        class CardLayout(ButtonBehavior, BoxLayout):
+            def __init__(self, **kwargs):
+                super().__init__(**kwargs)
+                self.bind(pos=self._update_rect, size=self._update_rect)
+                with self.canvas.before:
+                    Color(0.98, 0.98, 0.98, 1)  # カードの背景色
+                    self.rect = RoundedRectangle(size=self.size, pos=self.pos, radius=[card_radius])
+
+            def _update_rect(self, instance, value):
+                self.rect.pos = instance.pos
+                self.rect.size = instance.size
+
         try:
             with open(products_path, 'r', encoding='utf-8') as f:
                 json_load = json.load(f)
         except Exception as e:
-            # 建設的な挙動: 空の商品リストを使い、エラーメッセージを表示してクラッシュ回避
             json_load = {'items': []}
             root = ScrollView(size_hint=(1, 1))
-            container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=ui_padding, padding=(ui_padding, ui_padding, ui_padding, ui_padding))
+            container = BoxLayout(orientation='vertical', 
+                                size_hint_y=None, 
+                                spacing=ui_padding)
             container.bind(minimum_height=container.setter('height'))
-            container.add_widget(Label(text=f"products.json を読み込めませんでした: {e}", font_size=label_large))
+            container.add_widget(Label(text=f"products.json を読み込めませんでした: {e}", 
+                                     font_size=sp(16)))
             root.add_widget(container)
             return root
 
         root = ScrollView(size_hint=(1, 1))
-
-        # container の padding は左, 上, 右, 下 の順で指定
-        container = BoxLayout(orientation='vertical', size_hint_y=None, spacing=ui_padding, padding=(ui_padding, ui_padding, ui_padding, ui_padding))
+        container = BoxLayout(orientation='vertical', 
+                            size_hint_y=None, 
+                            spacing=dp(16),
+                            padding=ui_padding)
         container.bind(minimum_height=container.setter('height'))
 
-        # 汎用アイテム一覧（カテゴリを廃止）
-        self.item_checks = []  # list of dict {check, spinner(optional), product}
+        self.item_checks = []
         items = json_load.get('items', [])
+        
         for it in items:
-            row = BoxLayout(orientation='horizontal', size_hint_y=None, height=row_height, spacing=ui_padding)
+            # カード形式のレイアウト
+            card = CardLayout(orientation='vertical', 
+                            size_hint_y=None,
+                            height=row_height,
+                            padding=dp(12))
 
-            # 左の余白スペースを削除して項目を左寄せする（以前は spacer を置いていた）
+            # 商品情報の行
+            row = BoxLayout(orientation='horizontal', 
+                          spacing=ui_padding,
+                          size_hint_y=None,
+                          height=dp(80))
 
-            img_file = it.get('image') or ''
-            if img_file:
-                img_path = os.path.join(base, 'assets', 'images', img_file)
-                if os.path.exists(img_path):
-                    img_widget = Image(source=img_path, size_hint=(None, None), size=(img_size, img_size), allow_stretch=True, keep_ratio=True)
-                    # 画像を中央寄せするコンテナ
-                    img_container = BoxLayout(size_hint=(None, 1), width=img_size + ui_padding, padding=(0, (row_height - img_size) / 2, 0, (row_height - img_size) / 2))
-                    img_container.add_widget(img_widget)
-                    row.add_widget(img_container)
+            # 画像の配置改善
+            if 'image' in it:
+                img_container = BoxLayout(size_hint=(None, 1), 
+                                       width=img_size + ui_padding)
+                img = Image(source=os.path.join(base, 'assets', 'images', it['image']),
+                          size_hint=(None, None),
+                          size=(img_size, img_size))
+                img_container.add_widget(img)
+                row.add_widget(img_container)
 
-            # 名前とベース価格
-            text_box = BoxLayout(orientation='vertical')
-            name_label = Label(text=it.get('name', '名前不明'), font_size=label_large, color=label_color)
-            # 価格ラベルはスピナーの選択に応じて動的に更新する
-            # 初期表示はベース価格。ドリンクの場合は後で変更する。
-            initial_price = it.get('price', 0)
-            price_label = Label(text=f"{initial_price}¥", font_size=label_small, color=label_color)
-            text_box.add_widget(name_label)
-            text_box.add_widget(price_label)
-            row.add_widget(text_box)
+            # 商品情報コンテナ
+            info_container = BoxLayout(orientation='vertical',
+                                    padding=(0, dp(4)))
+            name_label = Label(text=it.get('name', '名前不明'),
+                             font_size=sp(18),
+                             color=label_color,
+                             size_hint_y=None,
+                             height=dp(30),
+                             halign='left')
+            name_label.bind(size=lambda s,w: setattr(s, 'text_size', w))
+            
+            price_label = Label(text=f"¥{it.get('price', 0)}",
+                              font_size=sp(16),
+                              color=label_color)
+            
+            info_container.add_widget(name_label)
+            info_container.add_widget(price_label)
+            row.add_widget(info_container)
 
-            spinner = None
-            sizes = it.get('sizes') or []
+            card.add_widget(row)
 
-            # helper: 数量ステッパーを作る（state は {'product','qty','spinner'} の dict）
-            def make_qty_controls(state):
-                q_size = dp(28)
-                # 初期 qty は state['qty']（0）
-                qty_label = Label(text=str(state.get('qty', 0)), size_hint=(None, None), size=(q_size, q_size), font_size=label_small, halign='center', valign='middle', color=label_color)
-                # ensure text is centered
-                qty_label.bind(size=lambda inst, val: setattr(inst, 'text_size', val))
-                btn_minus = Button(text='-', size_hint=(None, None), size=(q_size, q_size))
-                btn_plus = Button(text='+', size_hint=(None, None), size=(q_size, q_size))
-
-                def dec(_):
-                    if state.get('qty', 0) > 0:
-                        state['qty'] = max(0, state.get('qty', 0) - 1)
-                        qty_label.text = str(state['qty'])
-
-                def inc(_):
-                    state['qty'] = state.get('qty', 0) + 1
-                    qty_label.text = str(state['qty'])
-
-                btn_minus.bind(on_release=dec)
-                btn_plus.bind(on_release=inc)
-
-                qty_container = BoxLayout(orientation='horizontal', size_hint=(None, 1), width=q_size * 3 + ui_padding, padding=(0, (row_height - q_size) / 2, 0, (row_height - q_size) / 2))
-                qty_container.add_widget(btn_minus)
-                qty_container.add_widget(qty_label)
-                qty_container.add_widget(btn_plus)
-                return qty_container
-
-            # stateオブジェクトを作る（チェックボックス廃止に伴い qty=0 をデフォルトに）
-            state = {'product': it, 'qty': 0, 'spinner': None}
-
+            # サイズ選択UI
+            state = {'product': it, 'qty': 0}
+            sizes = it.get('sizes')
+            
             if sizes:
-                size_names = [s.get('name') for s in sizes]
-                default = size_names[1] if len(size_names) >= 2 else size_names[0]
-                # ドリンクなどはコンパクトに表示：スピナーと個数を横並びにして重なりを防止
-                spinner = Spinner(text=default, values=size_names, size_hint=(None, None), size=(spinner_compact_width, spinner_height), font_size=label_small, color=label_color)
-                state['spinner'] = spinner
-                qty_controls = make_qty_controls(state)
-                # 横並びコンテナ。高さを固定して中身を AnchorLayout で中央揃えする
-                total_width = spinner_compact_width + (dp(28) * 3 + ui_padding)
-                spinner_container = BoxLayout(orientation='horizontal', size_hint=(None, None), height=row_height, width=total_width, spacing=ui_padding)
-                # spinner を縦中央に配置するための AnchorLayout
-                from kivy.uix.anchorlayout import AnchorLayout
-                spinner_anchor = AnchorLayout(size_hint=(None, None), size=(spinner_compact_width, row_height), anchor_x='center', anchor_y='center')
-                spinner_anchor.add_widget(spinner)
-                qty_anchor = AnchorLayout(size_hint=(None, None), size=(dp(28) * 3 + ui_padding, row_height), anchor_x='center', anchor_y='center')
-                qty_anchor.add_widget(qty_controls)
-                spinner_container.add_widget(spinner_anchor)
-                spinner_container.add_widget(qty_anchor)
-                row.add_widget(spinner_container)
-                # スピナーの選択が変わったら価格ラベルを更新
-                def _update_price_label(inst, value, price_lbl=price_label, prod=it):
-                    # value はサイズ名。サイズに対応する価格を探す
-                    size_price = next((s.get('price') for s in prod.get('sizes', []) if s.get('name') == value), None)
-                    new_price = size_price if size_price is not None else prod.get('price', 0)
-                    price_lbl.text = f"{new_price}¥"
-
-                spinner.bind(text=_update_price_label)
-                # 初期反映（spinner の初期値に基づき価格表示を更新）
-                _update_price_label(spinner, spinner.text)
+                state['qty_by_size'] = {s.get('name'): 0 for s in sizes}
+                sizes_container = BoxLayout(orientation='horizontal',
+                                         spacing=dp(8),
+                                         size_hint_y=None,
+                                         height=dp(40))
+                
+                for size in sizes:
+                    size_name = size.get('name')
+                    size_box = BoxLayout(orientation='vertical',
+                                       spacing=dp(4),
+                                       size_hint_x=None,
+                                       width=dp(80))
+                    
+                    size_label = Label(text=f"{size_name}\n¥{size.get('price')}",
+                                     color=label_color,
+                                     font_size=sp(14),
+                                     size_hint_y=None,
+                                     height=dp(40))
+                    
+                    controls = self.make_qty_controls_for_size(state, size_name)
+                    size_box.add_widget(size_label)
+                    size_box.add_widget(controls)
+                    sizes_container.add_widget(size_box)
+                
+                card.add_widget(sizes_container)
             else:
-                # サイズ選択がないアイテムは右端に数量コントロールを置く
-                qty_controls = make_qty_controls(state)
-                # 非ドリンクでも数量コントロールは縦中央に揃える
-                from kivy.uix.anchorlayout import AnchorLayout
-                qty_anchor = AnchorLayout(size_hint=(None, None), size=(dp(28) * 3 + ui_padding, row_height), anchor_x='center', anchor_y='center')
-                qty_anchor.add_widget(qty_controls)
-                row.add_widget(qty_anchor)
+                controls = self.make_qty_controls(state)
+                card.add_widget(controls)
 
-            container.add_widget(row)
-            # self.item_checks は state dict のリストにする
+            container.add_widget(card)
             self.item_checks.append(state)
 
-        # 注文ボタン
-        order_btn = Button(text='注文する', size_hint_y=None, height=order_btn_height, font_size=label_large)
+        # 注文ボタンのスタイル改善
+        order_btn = Button(
+            text='注文する',
+            size_hint_y=None,
+            height=dp(56),
+            font_size=sp(18),
+            background_color=(0.2, 0.7, 0.3, 1),
+            background_normal='',
+        )
         order_btn.bind(on_release=self.on_order)
-        container.add_widget(order_btn)
+        
+        # ボタンを下部に固定
+        button_container = FloatLayout(size_hint_y=None, height=dp(80))
+        button_container.add_widget(order_btn)
+        container.add_widget(button_container)
 
         root.add_widget(container)
         return root
 
+    def make_qty_controls(self, state):
+        label_color = (0.3, 0.3, 0.3, 1)
+        # 数量コントロール作成用のヘルパーメソッド
+        controls = BoxLayout(orientation='horizontal',
+                           size_hint=(None, None),
+                           width=dp(120),
+                           height=dp(40))
+        
+        btn_minus = Button(text='-',
+                          size_hint=(None, None),
+                          size=(dp(40), dp(40)))
+        qty_label = Label(text='0',
+                         size_hint=(None, None),
+                         size=(dp(40), dp(40)),
+                         color=label_color)
+        btn_plus = Button(text='+',
+                         size_hint=(None, None),
+                         size=(dp(40), dp(40)))
+        
+        def update_qty(change):
+            state['qty'] = max(0, state.get('qty', 0) + change)
+            qty_label.text = str(state['qty'])
+        
+        btn_minus.bind(on_release=lambda _: update_qty(-1))
+        btn_plus.bind(on_release=lambda _: update_qty(1))
+        
+        controls.add_widget(btn_minus)
+        controls.add_widget(qty_label)
+        controls.add_widget(btn_plus)
+        
+        return controls
+
+    def make_qty_controls_for_size(self, state, size_name):
+        label_color = (0.3, 0.3, 0.3, 1)
+        controls = BoxLayout(orientation='horizontal',
+                           size_hint=(None, None),
+                           width=dp(120),
+                           height=dp(40))
+        
+        btn_minus = Button(text='-',
+                          size_hint=(None, None),
+                          size=(dp(40), dp(40)))
+        qty_label = Label(text='0',
+                         size_hint=(None, None),
+                         size=(dp(40), dp(40)),
+                         color=label_color)
+        btn_plus = Button(text='+',
+                         size_hint=(None, None),
+                         size=(dp(40), dp(40)))
+        
+        def update_qty(change):
+            state['qty_by_size'][size_name] = max(0, state['qty_by_size'].get(size_name, 0) + change)
+            qty_label.text = str(state['qty_by_size'][size_name])
+        
+        btn_minus.bind(on_release=lambda _: update_qty(-1))
+        btn_plus.bind(on_release=lambda _: update_qty(1))
+        
+        controls.add_widget(btn_minus)
+        controls.add_widget(qty_label)
+        controls.add_widget(btn_plus)
+        
+        return controls
+
     def on_order(self, instance):
         lines = []
         total = 0
-        # 選択は qty > 0 のアイテム
-        selected = [st for st in self.item_checks if st.get('qty', 0) > 0]
-        if not selected:
-            lines.append('選択された商品がありません')
-        else:
-            for st in selected:
-                p = st['product']
-                qty = int(st.get('qty', 0))
-                if st.get('spinner'):
-                    sz_name = st['spinner'].text
-                    size_price = next((s.get('price') for s in p.get('sizes', []) if s.get('name') == sz_name), None)
-                    price = size_price if size_price is not None else p.get('price', 0)
-                    lines.append(f"{p.get('name')} ({sz_name}) x{qty} - ¥{price * qty}")
-                else:
+        for st in self.item_checks:
+            p = st['product']
+            if 'qty_by_size' in st:  # サイズ別商品の場合
+                for size, qty in st['qty_by_size'].items():
+                    if qty > 0:
+                        size_price = next((s.get('price') for s in p.get('sizes', [])
+                                         if s.get('name') == size), None)
+                        price = size_price if size_price is not None else p.get('price', 0)
+                        lines.append(f"{p.get('name')} ({size}) x{qty} - ¥{price * qty}")
+                        total += price * qty
+            else:  # 通常商品の場合
+                qty = st.get('qty', 0)
+                if qty > 0:
                     price = p.get('price', 0)
                     lines.append(f"{p.get('name')} x{qty} - ¥{price * qty}")
-                total += int(price) * int(qty)
+                    total += price * qty
 
+        if not lines:
+            lines.append('選択された商品がありません')
+        
         lines.append(f"\n合計: ¥{total}")
-        popup = Popup(title='ご注文の確認', content=Label(text='\n'.join(lines), color=(1,1,1,1), font_size=sp(16)), size_hint=(0.8, 0.6), background='atlas://data/images/defaulttheme/button')
+        popup = Popup(title='ご注文の確認',
+                     content=Label(text='\n'.join(lines),
+                                 color=(1,1,1,1),
+                                 font_size=sp(16)),
+                     size_hint=(0.8, 0.6),
+                     background='atlas://data/images/defaulttheme/button')
         popup.open()
 
 if __name__ == '__main__':

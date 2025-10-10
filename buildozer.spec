@@ -6,7 +6,7 @@
 [app]
 
 # (str) Title of your application
-title = My Application
+title = 盛工ドナルド三上バーガー
 
 # (str) Package name
 package.name = myapp

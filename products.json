@@ -6,6 +6,7 @@
     {"id":"m4","name":"ホットドッグ","price":350,"image":"hotdog.png"},
     {"id":"m5","name":"バーベーキュー","price":580,"image":"barbecue.png"},
     {"id":"m6","name":"チーズバーガー","price":580,"image":"cheeseBurger.png"},
+    {"id":"m7","name":"たかはしK","price":900000,"image":""},
     {"id":"s1","name":"ナゲット","price":300,"image":"nugget.png"},
     {"id":"s2","name":"ポテト","price":220,"image":"poteto.png","sizes":[{"name":"S","price":180},{"name":"M","price":220},{"name":"L","price":260}]},
     {"id":"d1","name":"コーヒー","price":180,"image":"coffee.png","sizes":[{"name":"S","price":150},{"name":"M","price":180},{"name":"L","price":210}]},

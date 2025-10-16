@@ -8,8 +8,8 @@
     {"id":"m6","name":"チーズバーガー","price":580,"image":"cheeseBurger.png"},
     {"id":"m7","name":"たかはしK","price":900000,"image":""},
     {"id":"s1","name":"ナゲット","price":300,"image":"nugget.png"},
-    {"id":"s2","name":"ポテト","price":220,"image":"poteto.png","sizes":[{"name":"S","price":180},{"name":"M","price":220},{"name":"L","price":260}]},
-    {"id":"d1","name":"コーヒー","price":180,"image":"coffee.png","sizes":[{"name":"S","price":150},{"name":"M","price":180},{"name":"L","price":210}]},
-    {"id":"d2","name":"ジュース","price":180,"image":"juice.png","sizes":[{"name":"S","price":140},{"name":"M","price":180},{"name":"L","price":220}]}
+    {"id":"s2","name":"ポテト","price":null,"image":"poteto.png","sizes":[{"name":"S","price":180},{"name":"M","price":220},{"name":"L","price":260}]},
+    {"id":"d1","name":"コーヒー","price":null,"image":"coffee.png","sizes":[{"name":"S","price":150},{"name":"M","price":180},{"name":"L","price":210}]},
+    {"id":"d2","name":"ジュース","image":"juice.png","sizes":[{"name":"S","price":140},{"name":"M","price":180},{"name":"L","price":220}]}
   ]
 }

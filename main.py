@@ -116,9 +116,9 @@ class ListViewApp(App):
                              halign='left')
             name_label.bind(size=lambda s,w: setattr(s, 'text_size', w))
             
-            price_label = Label(text=f"¥{it.get('price', 0)}",
-                              font_size=sp(16),
-                              color=label_color)
+            price_label = Label(text=f"¥{it.get('price', 0)}" if it.get('price') is not None else "",
+                   font_size=sp(16),
+                   color=label_color)
             
             info_container.add_widget(name_label)
             info_container.add_widget(price_label)
@@ -133,16 +133,18 @@ class ListViewApp(App):
             if sizes:
                 state['qty_by_size'] = {s.get('name'): 0 for s in sizes}
                 sizes_container = BoxLayout(orientation='horizontal',
-                                         spacing=dp(8),
+                                         spacing=dp(36),
                                          size_hint_y=None,
                                          height=dp(40))
                 
                 for size in sizes:
                     size_name = size.get('name')
                     size_box = BoxLayout(orientation='vertical',
-                                       spacing=dp(4),
-                                       size_hint_x=None,
-                                       width=dp(80))
+                    spacing=dp(8),
+                    size_hint_x=None,
+                    width=dp(180),  # 120から180に増やす
+                    padding=(dp(8), dp(4)))  # 左右のパディングも少し増やす
+
                     
                     size_label = Label(text=f"{size_name}\n¥{size.get('price')}",
                                      color=label_color,
@@ -216,21 +218,28 @@ class ListViewApp(App):
 
     def make_qty_controls_for_size(self, state, size_name):
         label_color = (0.3, 0.3, 0.3, 1)
+        # コントロールの全体幅を調整
         controls = BoxLayout(orientation='horizontal',
-                           size_hint=(None, None),
-                           width=dp(120),
-                           height=dp(40))
-        
+                    size_hint=(None, None),
+                    width=dp(160),  # 10から160に増やす
+                    height=dp(40),
+                    spacing=dp(15))  # ボタン間の間隔を10から15に増やす
+    
+    # ボタンのスタイルを改善
         btn_minus = Button(text='-',
-                          size_hint=(None, None),
-                          size=(dp(40), dp(40)))
+                      size_hint=(None, None),
+                      size=(dp(40), dp(40)),
+                      background_color=(0.9, 0.9, 0.9, 1))  # 薄いグレー
+    
         qty_label = Label(text='0',
-                         size_hint=(None, None),
-                         size=(dp(40), dp(40)),
-                         color=label_color)
+                     size_hint=(None, None),
+                     size=(dp(40), dp(40)),
+                     color=label_color)
+    
         btn_plus = Button(text='+',
-                         size_hint=(None, None),
-                         size=(dp(40), dp(40)))
+                     size_hint=(None, None),
+                     size=(dp(40), dp(40)),
+                     background_color=(0.9, 0.9, 0.9, 1))  # 薄いグレー
         
         def update_qty(change):
             state['qty_by_size'][size_name] = max(0, state['qty_by_size'].get(size_name, 0) + change)
@@ -239,10 +248,14 @@ class ListViewApp(App):
         btn_minus.bind(on_release=lambda _: update_qty(-1))
         btn_plus.bind(on_release=lambda _: update_qty(1))
         
+        controls.add_widget(Label(size_hint_x=None, width=dp(5)))  # 左側の余白
         controls.add_widget(btn_minus)
-        controls.add_widget(qty_label)
-        controls.add_widget(btn_plus)
         
+        controls.add_widget(qty_label)
+        
+        controls.add_widget(btn_plus)
+        controls.add_widget(Label(size_hint_x=None, width=dp(5)))  # 右側の余白
+    
         return controls
 
     def on_order(self, instance):

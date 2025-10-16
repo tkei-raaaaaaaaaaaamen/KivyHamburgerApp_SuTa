@@ -14,6 +14,7 @@ from kivy.core.window import Window
 from kivy.uix.behaviors import ButtonBehavior
 from kivy.graphics import Color, RoundedRectangle
 from kivy.uix.floatlayout import FloatLayout
+from kivy.uix.anchorlayout import AnchorLayout
 
 # フォントファイルの指定
 font_path = os.path.join(os.path.dirname(__file__), "font", "NotoSansJP-VariableFont_wght.ttf")
@@ -35,8 +36,8 @@ class ListViewApp(App):
         products_path = os.path.join(base, 'products.json')
 
         # UI基本値の更新
-        ui_padding = dp(12)  # パディングを少し大きく
-        row_height = dp(120)  # 行の高さを増やして余裕を持たせる
+        ui_padding = dp(14)  # パディングを少し大きく
+        row_height = dp(320)  # 行の高さを2倍に増やして余裕を持たせる
         card_radius = dp(8)  # カードの角丸の半径
         img_size = dp(80)  # 画像サイズを大きく
         label_color = (0.3, 0.3, 0.3, 1)  # ラベルの色を濃いグレーに
@@ -72,190 +73,164 @@ class ListViewApp(App):
             root.add_widget(container)
             return root
 
-        root = ScrollView(size_hint=(1, 1))
+        # スクロール可能なコンテナ（リスト）を作成
+        scroll_view = ScrollView(size_hint=(1, 1))
         container = BoxLayout(orientation='vertical', 
-                            size_hint_y=None, 
-                            spacing=dp(16),
-                            padding=ui_padding)
+                    size_hint_y=None, 
+                    spacing=dp(16),
+                    padding=ui_padding)
         container.bind(minimum_height=container.setter('height'))
 
         self.item_checks = []
         items = json_load.get('items', [])
         
         for it in items:
-            # カード形式のレイアウト
-            card = CardLayout(orientation='vertical', 
-                            size_hint_y=None,
-                            height=row_height,
-                            padding=dp(12))
+            # カード形式のレイアウト（縦方向に中央揃え: 名前→画像→価格/サイズ→数量）
+            card = CardLayout(orientation='vertical',
+                              size_hint_y=None,
+                              height=row_height,
+                              padding=(dp(12), dp(12), dp(20), dp(12)))
+            # 子要素を縦方向に中央揃えにする
+            card.valign = 'middle'
 
-            # 商品情報の行
-            row = BoxLayout(orientation='horizontal', 
-                          spacing=ui_padding,
-                          size_hint_y=None,
-                          height=dp(80))
+            # 商品名（中央寄せ）
+            name_label = Label(text=it.get('name', '名前不明'), font_size=sp(18), color=label_color,
+                               size_hint_y=None, height=dp(36), halign='center', valign='middle')
+            name_label.bind(size=lambda s, w: setattr(s, 'text_size', (s.width, None)))
+            card.add_widget(name_label)
 
-            # 画像の配置改善
+            # 画像（中央）
             if 'image' in it:
-                img_container = BoxLayout(size_hint=(None, 1), 
-                                       width=img_size + ui_padding)
-                img = Image(source=os.path.join(base, 'assets', 'images', it['image']),
-                          size_hint=(None, None),
-                          size=(img_size, img_size))
+                img_container = AnchorLayout(size_hint=(1, None), height=img_size + dp(24), anchor_x='center', anchor_y='center')
+                img = Image(source=os.path.join(base, 'assets', 'images', it['image']), size_hint=(None, None), size=(img_size, img_size), allow_stretch=True, keep_ratio=True)
                 img_container.add_widget(img)
-                row.add_widget(img_container)
+                card.add_widget(img_container)
 
-            # 商品情報コンテナ
-            info_container = BoxLayout(orientation='vertical',
-                                    padding=(0, dp(4)))
-            name_label = Label(text=it.get('name', '名前不明'),
-                             font_size=sp(18),
-                             color=label_color,
-                             size_hint_y=None,
-                             height=dp(30),
-                             halign='left')
-            name_label.bind(size=lambda s,w: setattr(s, 'text_size', w))
-            
-            price_label = Label(text=f"¥{it.get('price', 0)}" if it.get('price') is not None else "",
-                   font_size=sp(16),
-                   color=label_color)
-            
-            info_container.add_widget(name_label)
-            info_container.add_widget(price_label)
-            row.add_widget(info_container)
-
-            card.add_widget(row)
-
-            # サイズ選択UI
+            # 状態とサイズ情報
             state = {'product': it, 'qty': 0}
             sizes = it.get('sizes')
-            
+
             if sizes:
                 state['qty_by_size'] = {s.get('name'): 0 for s in sizes}
-                sizes_container = BoxLayout(orientation='horizontal',
-                                         spacing=dp(36),
-                                         size_hint_y=None,
-                                         height=dp(40))
-                
+                # 各数量コントロールの上にサイズ名ラベルを置き、コントロール群だけを横スクロールさせる
+                control_width = dp(220)
+                ctrl_spacing = dp(12)
+                # 横並びのラッパー（各要素は縦方向にサイズ名ラベル + 数量コントロール）
+                controls_row = BoxLayout(orientation='horizontal', size_hint=(None, None), height=dp(96), spacing=ctrl_spacing)
+                controls_row.width = len(sizes) * (control_width + ctrl_spacing) + dp(40)
+
                 for size in sizes:
                     size_name = size.get('name')
-                    size_box = BoxLayout(orientation='vertical',
-                    spacing=dp(8),
-                    size_hint_x=None,
-                    width=dp(180),  # 120から180に増やす
-                    padding=(dp(8), dp(4)))  # 左右のパディングも少し増やす
-
-                    
-                    size_label = Label(text=f"{size_name}\n¥{size.get('price')}",
-                                     color=label_color,
-                                     font_size=sp(14),
-                                     size_hint_y=None,
-                                     height=dp(40))
-                    
+                    # each control gets a fixed-width container so spacing is consistent
+                    ctrl_wrap = AnchorLayout(size_hint=(None, None), size=(control_width, dp(96)), anchor_x='center', anchor_y='center')
+                    # 縦にラベルとコントロールを積む
+                    vbox = BoxLayout(orientation='vertical', size_hint=(None, None), size=(control_width, dp(96)), spacing=dp(6))
+                    size_lbl = Label(text=size_name, size_hint=(None, None), size=(control_width, dp(28)), font_size=sp(14), color=label_color, halign='center', valign='middle')
+                    size_lbl.bind(size=lambda s, *_: setattr(s, 'text_size', (s.width, s.height)))
                     controls = self.make_qty_controls_for_size(state, size_name)
-                    size_box.add_widget(size_label)
-                    size_box.add_widget(controls)
-                    sizes_container.add_widget(size_box)
-                
-                card.add_widget(sizes_container)
+                    # 中央寄せのため AnchorLayout を使ってコントロールを包む
+                    ctrl_anchor = AnchorLayout(size_hint=(1, None), height=dp(56), anchor_x='center', anchor_y='center')
+                    ctrl_anchor.add_widget(controls)
+                    vbox.add_widget(size_lbl)
+                    vbox.add_widget(ctrl_anchor)
+                    ctrl_wrap.add_widget(vbox)
+                    controls_row.add_widget(ctrl_wrap)
+
+                # trailing spacer so last control can be fully scrolled into view
+                controls_row.add_widget(Label(size_hint_x=None, width=dp(40)))
+
+                controls_scroll = ScrollView(size_hint=(1, None), height=dp(120), do_scroll_x=True, do_scroll_y=False)
+                controls_scroll.scroll_timeout = 240
+                controls_scroll.scroll_distance = 24
+                controls_scroll.add_widget(controls_row)
+
+                sizes_row = BoxLayout(orientation='horizontal', size_hint_y=None, height=dp(120), spacing=dp(8), padding=(dp(4), 0, dp(4), 0))
+                # 左のサイズ縦列は廃止し、スクロールするコントロールのみを表示
+                sizes_row.add_widget(controls_scroll)
+                card.add_widget(sizes_row)
             else:
+                # 価格表示
+                price_label = Label(text=f"¥{it.get('price', 0)}", font_size=sp(16), color=label_color, size_hint_y=None, height=dp(28), halign='center')
+                price_label.bind(size=lambda s, *_: setattr(s, 'text_size', (s.width, s.height)))
+                card.add_widget(price_label)
+                # 数量コントロールを中央に配置
                 controls = self.make_qty_controls(state)
-                card.add_widget(controls)
+                ctrl_anchor = AnchorLayout(size_hint=(1, None), height=dp(64), anchor_x='center')
+                ctrl_anchor.add_widget(controls)
+                card.add_widget(ctrl_anchor)
 
             container.add_widget(card)
             self.item_checks.append(state)
 
-        # 注文ボタンのスタイル改善
+        # 注文ボタンのスタイル改善（横いっぱいに表示）
         order_btn = Button(
             text='注文する',
-            size_hint_y=None,
+            size_hint=(1, None),
             height=dp(56),
             font_size=sp(18),
             background_color=(0.2, 0.7, 0.3, 1),
             background_normal='',
         )
         order_btn.bind(on_release=self.on_order)
-        
-        # ボタンを下部に固定
-        button_container = FloatLayout(size_hint_y=None, height=dp(80))
-        button_container.add_widget(order_btn)
-        container.add_widget(button_container)
 
-        root.add_widget(container)
-        return root
+        # ルートはスクロール領域 + 固定フッターの縦レイアウトにする
+        scroll_view.add_widget(container)
+        root_layout = BoxLayout(orientation='vertical')
+        root_layout.add_widget(scroll_view)
+
+        # フッター（画面下に固定）
+        footer = BoxLayout(size_hint_y=None, height=dp(80), padding=(dp(8), dp(8), dp(8), dp(8)))
+        btn_anchor = AnchorLayout(size_hint=(1, 1), anchor_x='center', anchor_y='center')
+        btn_anchor.add_widget(order_btn)
+        footer.add_widget(btn_anchor)
+        root_layout.add_widget(footer)
+
+        return root_layout
 
     def make_qty_controls(self, state):
         label_color = (0.3, 0.3, 0.3, 1)
-        # 数量コントロール作成用のヘルパーメソッド
-        controls = BoxLayout(orientation='horizontal',
-                           size_hint=(None, None),
-                           width=dp(120),
-                           height=dp(40))
-        
-        btn_minus = Button(text='-',
-                          size_hint=(None, None),
-                          size=(dp(40), dp(40)))
-        qty_label = Label(text='0',
-                         size_hint=(None, None),
-                         size=(dp(40), dp(40)),
-                         color=label_color)
-        btn_plus = Button(text='+',
-                         size_hint=(None, None),
-                         size=(dp(40), dp(40)))
-        
+        # 数量コントロール作成用のヘルパーメソッド（拡張）
+        controls = BoxLayout(orientation='horizontal', size_hint=(None, None), width=dp(180), height=dp(48), spacing=dp(8))
+
+        btn_minus = Button(text='-', size_hint=(None, None), size=(dp(56), dp(48)))
+        qty_label = Label(text='0', size_hint=(None, None), size=(dp(64), dp(48)), color=label_color)
+        btn_plus = Button(text='+', size_hint=(None, None), size=(dp(56), dp(48)))
+
         def update_qty(change):
             state['qty'] = max(0, state.get('qty', 0) + change)
             qty_label.text = str(state['qty'])
-        
+
         btn_minus.bind(on_release=lambda _: update_qty(-1))
         btn_plus.bind(on_release=lambda _: update_qty(1))
-        
+
         controls.add_widget(btn_minus)
         controls.add_widget(qty_label)
         controls.add_widget(btn_plus)
-        
+
         return controls
 
     def make_qty_controls_for_size(self, state, size_name):
         label_color = (0.3, 0.3, 0.3, 1)
-        # コントロールの全体幅を調整
-        controls = BoxLayout(orientation='horizontal',
-                    size_hint=(None, None),
-                    width=dp(160),  # 10から160に増やす
-                    height=dp(40),
-                    spacing=dp(15))  # ボタン間の間隔を10から15に増やす
-    
-    # ボタンのスタイルを改善
-        btn_minus = Button(text='-',
-                      size_hint=(None, None),
-                      size=(dp(40), dp(40)),
-                      background_color=(0.9, 0.9, 0.9, 1))  # 薄いグレー
-    
-        qty_label = Label(text='0',
-                     size_hint=(None, None),
-                     size=(dp(40), dp(40)),
-                     color=label_color)
-    
-        btn_plus = Button(text='+',
-                     size_hint=(None, None),
-                     size=(dp(40), dp(40)),
-                     background_color=(0.9, 0.9, 0.9, 1))  # 薄いグレー
-        
+        # サイズ別の数量コントロール
+        controls = BoxLayout(orientation='horizontal', size_hint=(None, None), width=dp(220), height=dp(48), spacing=dp(8))
+
+        btn_minus = Button(text='-', size_hint=(None, None), size=(dp(56), dp(48)), background_color=(0.9, 0.9, 0.9, 1))
+        qty_label = Label(text='0', size_hint=(None, None), size=(dp(64), dp(48)), color=label_color)
+        btn_plus = Button(text='+', size_hint=(None, None), size=(dp(56), dp(48)), background_color=(0.9, 0.9, 0.9, 1))
+
         def update_qty(change):
             state['qty_by_size'][size_name] = max(0, state['qty_by_size'].get(size_name, 0) + change)
             qty_label.text = str(state['qty_by_size'][size_name])
-        
+
         btn_minus.bind(on_release=lambda _: update_qty(-1))
         btn_plus.bind(on_release=lambda _: update_qty(1))
-        
-        controls.add_widget(Label(size_hint_x=None, width=dp(5)))  # 左側の余白
+
+        controls.add_widget(Label(size_hint_x=None, width=dp(6)))
         controls.add_widget(btn_minus)
-        
         controls.add_widget(qty_label)
-        
         controls.add_widget(btn_plus)
-        controls.add_widget(Label(size_hint_x=None, width=dp(5)))  # 右側の余白
-    
+        controls.add_widget(Label(size_hint_x=None, width=dp(6)))
+
         return controls
 
     def on_order(self, instance):
